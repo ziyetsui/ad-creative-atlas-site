@@ -1,0 +1,10 @@
+const test=require('node:test');const assert=require('node:assert/strict');
+const {createHandler,reduceEvents}=require('../api/favorites');
+const ids=Object.keys(require('../data/favorite-catalog.json')).slice(0,2);
+const events=[];const storage={put:async pathname=>{events.push({pathname});return {pathname};},list:async ({cursor})=>({blobs:events.slice(Number(cursor)||0,(Number(cursor)||0)+1),hasMore:(Number(cursor)||0)+1<events.length,cursor:String((Number(cursor)||0)+1)})};
+const handler=createHandler(storage);
+async function call(method,body,origin='https://atlas.example'){const res={code:200,headers:{},setHeader(k,v){this.headers[k]=v;},status(c){this.code=c;return this;},json(data){this.data=data;return this;}};await handler({method,body,headers:{origin,host:'atlas.example','content-type':'application/json'}},res);return res;}
+test('independent simultaneous favorites survive fresh reads and paginated history',async()=>{await Promise.all(ids.map(id=>call('POST',{id,active:true})));const r=await call('GET');assert.equal(r.code,200);assert.deepEqual(new Set(r.data.favorites.map(x=>x.id)),new Set(ids));assert.equal(r.headers['Cache-Control'],'no-store');});
+test('cancel keeps history and unrelated favorites',async()=>{await new Promise(r=>setTimeout(r,5));await call('POST',{id:ids[0],active:false});assert.equal(events.length,3);assert.deepEqual((await call('GET')).data.favorites.map(x=>x.id),[ids[1]]);});
+test('reject invalid materials, foreign writes and unsupported methods',async()=>{assert.equal((await call('POST',{id:'invalid',active:true})).code,400);assert.equal((await call('POST',{id:ids[0],active:true},'https://other.example')).code,403);assert.equal((await call('DELETE')).code,405);assert.equal(events.length,3);});
+test('storage failure is explicit, never a false successful save',async()=>{const broken=createHandler({put:async()=>{throw Error('outage');}});const res={setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;}};await broken({method:'POST',headers:{host:'atlas.example','content-type':'application/json'},body:{id:ids[0],active:true}},res);assert.equal(res.code,503);});

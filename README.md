@@ -53,3 +53,22 @@ python3 src/scripts/build_site.py --out "$TMP/site" --artifact "$TMP/atlas.html"
 ## 口径（页面上处处可见）
 
 榜单只收录赢家 → 「赢家共性」；所有系数「相关，非因果」，附 R²；没有 GMV 数值；只看了封面和标题。是Cayson 167 条只在 `#/ref`，不进任何统计。
+
+## Shared favorites (2026-10-04)
+
+`#/favorites` is the shared cloud collection. Every gallery card, library material,
+Screen Studio video and Cayson row has a star. Saving succeeds on the server before
+navigation. Main favorites use existing cover annotations for the two axes;
+unannotated entries remain in a separate section. Screen Studio keeps its own axes.
+
+`api/favorites.js` uses the project's connected Vercel Blob store through OIDC
+(`BLOB_STORE_ID`). Immutable per-operation records preserve cancellation history and
+avoid whole-collection overwrite races. No browser-local favorites or credentials.
+All visitors can add/remove, as this is a public shared collection. Exports are
+available on the collection page. Blob retention survives normal redeployments;
+do not disconnect/delete the store when deploying. The storage service's availability
+and quota still apply; failures are shown and never acknowledged as saved.
+
+`data/favorite-catalog.json` contains public display metadata and the allowed IDs.
+When rebuilding the atlas, regenerate it and retain the API, favorites.js, navigation,
+and star integration. Tests: `npm test`.

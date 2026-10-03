@@ -125,6 +125,7 @@
     try {
       if (!META) { const c = await get('core'); META = c.meta; CORE = c.core; CORE.forEach((x) => { BYID[x.id] = x; }); }
       if (r === 'home') await renderHome(q);
+      else if (r === 'favorites') await window.AtlasFavorites.render();
       else if (r === 'types') await renderTypes();
       else if (r === 'case') await renderCase(arg);
       else if (r === 'laws') await (arg ? renderLaw(arg) : renderLaws());
@@ -138,7 +139,7 @@
       console.error(err);
       $main.innerHTML = `<div class="wrap boot">加载失败：${esc(err.message)}。请刷新重试；若仍失败，在 site 目录运行 <code>python3 -m http.server</code> 后用浏览器打开。</div>`;
     }
-    const titles = { home: '精选', types: '原型', case: '案例', laws: '底层规律', algo: '算法', library: '素材库', ss: 'Screen Studio', ref: '邻近参照' };
+    const titles = { home: '精选', types: '原型', case: '案例', laws: '底层规律', algo: '算法', library: '素材库', ss: 'Screen Studio', ref: '邻近参照', favorites: '共享收藏' };
     document.title = `${titles[r] || ''} · 广告素材增长图鉴`;
     if (r === 'home' && lastRoute && lastRoute !== 'home') scrollTo(0, homeScroll);
     else if (!(r === 'home' && !lastRoute)) scrollTo(0, 0);
@@ -200,7 +201,7 @@
           ${r.bp != null ? `<div class="pctbar" aria-hidden="true"><i style="width:${Math.round(r.bp * 100)}%"></i></div>` : ''}
           ${r.ol ? `<div class="ol">${esc(r.ol)}</div>` : ''}
         </div></a>
-      <a class="ext" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" aria-label="在小红书打开" title="在小红书打开">↗</a>
+      ${window.AtlasFavorites.button(r.id)}<a class="ext" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" aria-label="在小红书打开" title="在小红书打开">↗</a>
     </article>`;
   }
   function masonry(rows, width) {
@@ -1002,9 +1003,9 @@
       for (let i = s; i < e; i++) {
         const r = cur[i];
         const th = textOnly ? '' : `<div class="th">${r[12] ? `<img src="${esc(r[12])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.textContent='封面不可得'">` : '封面不可得'}</div>`;
-        html += `<button type="button" role="listitem" class="lrow ${textOnly ? 'txt' : ''}" style="top:${i * H}px" data-i="${i}">${th}
+        html += `<div role="listitem" tabindex="0" class="lrow ${textOnly ? 'txt' : ''}" style="top:${i * H}px" data-i="${i}">${window.AtlasFavorites.button(r[0])}${th}
           <div style="min-width:0"><div class="tt">${r[11] ? '<span class="badge acc">精选</span> ' : ''}${esc(r[1])}</div><div class="mt">${esc(r[2])} · ${esc(r[3])} · ${esc(r[4])} · 上榜 ${r[10]} 次</div></div>
-          <div class="rk">${r[6]}/${r[7]}<br><span class="mut xs">${esc(famName(r[9]))}</span></div></button>`;
+          <div class="rk">${r[6]}/${r[7]}<br><span class="mut xs">${esc(famName(r[9]))}</span></div></div>`;
       }
       vl.innerHTML = html;
     };
@@ -1019,8 +1020,10 @@
     document.getElementById('lfam').onchange = (e) => { LQ.fam = e.target.value; store.set('atlas-lq', LQ); apply(); };
     document.getElementById('lfeat').onchange = (e) => { LQ.feat = e.target.checked; store.set('atlas-lq', LQ); apply(); };
     const dr = document.getElementById('dr');
+    vl.addEventListener('keydown', (e) => { if (e.target.classList.contains('lrow') && ['Enter',' '].includes(e.key)) { e.preventDefault(); e.target.click(); } });
     vl.addEventListener('click', (e) => {
       const b = e.target.closest('.lrow'); if (!b) return;
+      if (e.target.closest('[data-favorite]')) return;
       const r = cur[+b.dataset.i];
       if (BYID[r[0]]) { location.hash = '#/case/' + r[0]; return; }
       const L = lists[r[8]];
@@ -1052,7 +1055,7 @@
       <section class="sec"><h2><span class="n">01</span>参照模型（只作对照）</h2><p class="sm">${esc(m.name || '')}：${esc(m.kind || '')}；n = ${m.n ?? '—'}，交叉验证 AUC ${fx(m.auc)} ± ${fx(m.auc_sd)}。${esc(m.notes || '')}</p>
         ${m.coefs && m.coefs.length ? `<div class="tw" style="margin-top:10px"><table class="t"><thead><tr><th>特征</th><th>系数</th><th>90% 区间</th></tr></thead><tbody>${m.coefs.map((c) => `<tr><td>${esc(c.label || c.feature)}</td><td class="c">${fx(c.coef ?? c.beta)}</td><td class="c">${c.ci90 ? fx(c.ci90[0]) + ' ~ ' + fx(c.ci90[1]) : '—'}</td></tr>`).join('')}</tbody></table></div>` : ''}</section>
       <section class="sec"><h2><span class="n">02</span>条目</h2><div class="tw"><table class="t"><thead><tr><th>标题</th><th>形式</th><th>赞</th><th>藏</th><th>评</th><th></th></tr></thead><tbody>
-        ${ref.items.map((x) => `<tr><td>${esc(x.title)}</td><td>${esc(x.format)}</td><td class="c">${num(x.metrics.likes)}</td><td class="c">${num(x.metrics.collects)}</td><td class="c">${num(x.metrics.comments)}</td><td><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">↗</a></td></tr>`).join('')}</tbody></table></div></section></div>`;
+        ${ref.items.map((x) => `<tr><td>${esc(x.title)}</td><td>${esc(x.format)}</td><td class="c">${num(x.metrics.likes)}</td><td class="c">${num(x.metrics.collects)}</td><td class="c">${num(x.metrics.comments)}</td><td class="favorite-table">${window.AtlasFavorites.button(x.id)}<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">↗</a></td></tr>`).join('')}</tbody></table></div></section></div>`;
   }
 
   // ------------------------------------------------------------ REF hub
@@ -1083,7 +1086,7 @@
       const media = !A && x.hv
         ? `<div class="pv vid"><video controls playsinline preload="none" ${p ? `poster="${p}"` : ''} style="aspect-ratio:${x.w}/${x.h}" data-fb="ssfb-${x.id}" aria-label="${esc(x.name)} 演示视频"><source src="videos-ss/${x.id}.mp4" type="video/mp4"></video></div><div id="ssfb-${x.id}" hidden>${still}</div>`
         : still;
-      return `<article class="sscard">${media}
+      return `<article class="sscard">${window.AtlasFavorites.button(x.id)}${media}
         <div class="b"><div class="nm"><b>${esc(x.name)}</b><span class="mut">@${esc(x.handle)}</span></div>
         <div class="ln">${esc(x.feature || x.zh || '')}</div>
         <div class="mt"><span>♥ ${num(x.likes)}</span><span>${dur(x.dur)}</span><span>${esc(x.aspect || '')}</span><span>${esc(AUD[x.g.audio] || x.g.audio || '')}</span>${x.g.zoom ? '<span>自动缩放</span>' : ''}</div>
