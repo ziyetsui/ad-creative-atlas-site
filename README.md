@@ -1,3 +1,12 @@
+# Ad Creative Atlas
+
+- [Ancher 交互创意图鉴](https://ziyetsui.github.io/ad-creative-atlas-site/ancher/)：四象限、16种方法与48个创意、12个通用结构、71个原型各3个原片例子、439条原片和机器转写。
+- [Atlas 原素材库](https://ziyetsui.github.io/ad-creative-atlas-site/)：精选、规律、算法和素材库。
+
+Ancher 页面是独立静态 HTML，原片从 [GitHub Release](https://github.com/ziyetsui/ad-creative-atlas-site/releases/tag/atlas-video-library-20261011) 按需播放，不把约2GB视频放进 Pages 构建。原始帖子与结构证据边界在页面中保留。GitHub Pages 从 `main` 根目录自动发布，合并 PR 后生效。
+
+以下是原 Atlas 构建说明；源构建脚本不在本仓库中。
+
 # site/ — 广告素材增长图鉴（本地完整版）
 
 生成物，不要手改。源：`src/site/`（index.html / app.css / app.js）+ `docs/atlas/atlas.json`，构建脚本 `src/scripts/build_site.py`。
